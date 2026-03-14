@@ -424,3 +424,27 @@
 .leave-link:hover {
   color: #9ca3af;
 }
+
+/* Bot controls */
+.btn-remove-bot {
+  background: transparent;
+  border: 1px solid #4b5563;
+  color: #9ca3af;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-remove-bot:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { type GameState, type Player, type Direction, TICK_RATE } from '../game/types'
 import { createInitialState, applyDirection, tick } from '../game/engine'
+import { computeBotDirection } from '../game/bot'
 import GameCanvas from './GameCanvas'
 import GameOver from './GameOver'
 
@@ -73,6 +74,13 @@ export default function GameScreen({
           if (timerRef.current) clearInterval(timerRef.current)
           if (countdownRef.current) clearInterval(countdownRef.current)
           return
+        }
+
+        // Compute bot directions
+        const botPlayers = players.filter((p) => p.isBot)
+        for (const bot of botPlayers) {
+          const dir = computeBotDirection(state, bot.id)
+          if (dir) applyDirection(state, bot.id, dir)
         }
 
         const newState = tick({ ...state, snakes: state.snakes.map((s) => ({ ...s, body: [...s.body] })), fruits: [...state.fruits] })

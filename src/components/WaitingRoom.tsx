@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { type Player, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES } from '../game/types'
+import { type Player, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES } from '../game/types'
 
 interface WaitingRoomProps {
   channel: RealtimeChannel
@@ -8,7 +8,7 @@ interface WaitingRoomProps {
   myId: string
   isHost: boolean
   roomCode: string
-  onStart: () => void
+  onStart: (players: Player[]) => void
   onLeave: () => void
 }
 
@@ -40,28 +40,73 @@ export default function WaitingRoom({
         if (p?.id) playerList.push(p)
       }
       playerList.sort((a, b) => (a.isHost === b.isHost ? 0 : a.isHost ? -1 : 1))
-      if (playerList.length > 0) setPlayers(playerList)
+      if (playerList.length > 0) {
+        // Preserve bots when syncing presence (bots aren't in presence state)
+        setPlayers((prev) => {
+          const bots = prev.filter((p) => p.isBot)
+          return [...playerList, ...bots]
+        })
+      }
     }
 
     channel.on('presence', { event: 'sync' }, syncPlayers)
     syncPlayers()
+
+    // Listen for bot updates from host
+    channel.on('broadcast', { event: 'bot-added' }, ({ payload }) => {
+      setPlayers((prev) => [...prev, payload as Player])
+    })
+    channel.on('broadcast', { event: 'bot-removed' }, ({ payload }) => {
+      const { botId } = payload as { botId: string }
+      setPlayers((prev) => prev.filter((p) => p.id !== botId))
+    })
   }, [channel])
 
   // Listen for host starting the game
   useEffect(() => {
-    channel.on('broadcast', { event: 'game-start' }, () => {
-      onStart()
+    channel.on('broadcast', { event: 'game-start' }, ({ payload }) => {
+      const { players: gamePlayers } = payload as { players: Player[] }
+      if (gamePlayers) setPlayers(gamePlayers)
+      onStart(gamePlayers || players)
     })
   }, [channel, onStart])
+
+  const handleAddBot = () => {
+    if (players.length >= MAX_PLAYERS) return
+    const botCount = players.filter((p) => p.isBot).length
+    const bot: Player = {
+      id: `bot-${Date.now()}`,
+      name: BOT_NAMES[botCount] || `Bot ${botCount + 1}`,
+      isHost: false,
+      isBot: true,
+    }
+    const updated = [...players, bot]
+    setPlayers(updated)
+    channel.send({
+      type: 'broadcast',
+      event: 'bot-added',
+      payload: bot,
+    })
+  }
+
+  const handleRemoveBot = (botId: string) => {
+    const updated = players.filter((p) => p.id !== botId)
+    setPlayers(updated)
+    channel.send({
+      type: 'broadcast',
+      event: 'bot-removed',
+      payload: { botId },
+    })
+  }
 
   const handleStart = () => {
     if (!isHost || players.length < 2) return
     channel.send({
       type: 'broadcast',
       event: 'game-start',
-      payload: {},
+      payload: { players },
     })
-    onStart()
+    onStart(players)
   }
 
   const handleCopyLink = () => {
@@ -92,9 +137,14 @@ export default function WaitingRoom({
               style={{ background: PLAYER_COLORS[i] }}
             />
             <span className="player-name">
-              {p.name} {p.isHost && '(Host)'} {p.id === myId && '(You)'}
+              {p.name} {p.isHost && '(Host)'} {p.id === myId && '(You)'} {p.isBot && '(Bot)'}
             </span>
             <span className="player-color">{PLAYER_COLOR_NAMES[i]}</span>
+            {isHost && p.isBot && (
+              <button className="btn-remove-bot" onClick={() => handleRemoveBot(p.id)}>
+                &times;
+              </button>
+            )}
           </div>
         ))}
         {Array.from({ length: MAX_PLAYERS - players.length }).map((_, i) => (
@@ -104,6 +154,11 @@ export default function WaitingRoom({
           </div>
         ))}
       </div>
+      {isHost && players.length < MAX_PLAYERS && (
+        <button className="btn btn-secondary" onClick={handleAddBot}>
+          + Add Bot
+        </button>
+      )}
       {isHost ? (
         <button
           className="btn btn-primary"

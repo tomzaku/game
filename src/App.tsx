@@ -36,9 +36,9 @@ function App() {
     }
   }, [screen])
 
-  const handleStartFromRoom = useCallback(() => {
+  const handleStartFromRoom = useCallback((players: Player[]) => {
     if (screen.type === 'waiting') {
-      setScreen({ ...screen, type: 'game' })
+      setScreen({ ...screen, type: 'game', players })
     }
   }, [screen])
 

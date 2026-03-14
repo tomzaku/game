@@ -28,6 +28,7 @@ export interface Player {
   id: string
   name: string
   isHost: boolean
+  isBot?: boolean
 }
 
 export const GRID_SIZE = 30
@@ -46,3 +47,5 @@ export const SPAWN_POSITIONS: Position[] = [
 ]
 
 export const SPAWN_DIRECTIONS: Direction[] = ['RIGHT', 'LEFT', 'RIGHT', 'LEFT']
+
+export const BOT_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma']
