@@ -119,7 +119,7 @@ export function applyDirection(
   const snake = state.snakes.find((s) => s.id === playerId)
   if (!snake || !snake.alive) return
 
-  // Prevent 180-degree turns
+  // Prevent 180-degree turns based on current direction
   const opposites: Record<Direction, Direction> = {
     UP: 'DOWN',
     DOWN: 'UP',
@@ -127,6 +127,17 @@ export function applyDirection(
     RIGHT: 'LEFT',
   }
   if (opposites[direction] === snake.direction) return
+
+  // Also prevent moving into the neck (handles rapid key changes between ticks)
+  if (snake.body.length >= 2) {
+    const head = snake.body[0]
+    const neck = snake.body[1]
+    const nextHead = {
+      x: head.x + (direction === 'RIGHT' ? 1 : direction === 'LEFT' ? -1 : 0),
+      y: head.y + (direction === 'DOWN' ? 1 : direction === 'UP' ? -1 : 0),
+    }
+    if (nextHead.x === neck.x && nextHead.y === neck.y) return
+  }
 
   snake.direction = direction
 }
