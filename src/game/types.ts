@@ -13,16 +13,20 @@ export interface Snake {
   alive: boolean
   score: number
   color: string
+  frozenTicks: number
 }
 
 export interface GameState {
   snakes: Snake[]
   fruits: Position[]
+  freezeItems: Position[]
   timeLeft: number
   started: boolean
   gameOver: boolean
   gridSize: number
 }
+
+export const FREEZE_DURATION_TICKS = 33 // 5 seconds at 150ms tick rate
 
 export interface Player {
   id: string

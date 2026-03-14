@@ -113,8 +113,11 @@ export function computeBotDirection(state: GameState, botId: string): Direction 
     }
   }
 
-  // Try BFS to fruit first
-  const bfsDir = bfsToFruit(head, currentDir, occupied, state.fruits)
+  // Prioritize freeze items if available, otherwise go for fruit
+  const targets = state.freezeItems.length > 0
+    ? [...state.freezeItems, ...state.fruits]
+    : state.fruits
+  const bfsDir = bfsToFruit(head, currentDir, occupied, targets)
 
   // Get all safe directions (not wall, not body)
   const safeDirs = DIRECTIONS.filter((dir) => {

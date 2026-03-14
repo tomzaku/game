@@ -7,6 +7,7 @@ import {
   PLAYER_COLORS,
   SPAWN_POSITIONS,
   SPAWN_DIRECTIONS,
+  FREEZE_DURATION_TICKS,
 } from './types'
 
 export function createInitialState(
@@ -30,12 +31,14 @@ export function createInitialState(
     alive: true,
     score: 0,
     color: PLAYER_COLORS[i],
+    frozenTicks: 0,
   }))
 
   const fruits: Position[] = []
   const state: GameState = {
     snakes,
     fruits,
+    freezeItems: [],
     timeLeft: 60,
     started: false,
     gameOver: false,
@@ -50,7 +53,7 @@ export function createInitialState(
   return state
 }
 
-function spawnFruit(state: GameState): void {
+function getOccupied(state: GameState): Set<string> {
   const occupied = new Set<string>()
   for (const snake of state.snakes) {
     for (const pos of snake.body) {
@@ -60,13 +63,34 @@ function spawnFruit(state: GameState): void {
   for (const fruit of state.fruits) {
     occupied.add(`${fruit.x},${fruit.y}`)
   }
+  for (const fi of state.freezeItems) {
+    occupied.add(`${fi.x},${fi.y}`)
+  }
+  return occupied
+}
 
+function spawnFruit(state: GameState): void {
+  const occupied = getOccupied(state)
   let attempts = 0
   while (attempts < 100) {
     const x = Math.floor(Math.random() * GRID_SIZE)
     const y = Math.floor(Math.random() * GRID_SIZE)
     if (!occupied.has(`${x},${y}`)) {
       state.fruits.push({ x, y })
+      return
+    }
+    attempts++
+  }
+}
+
+function spawnFreezeItem(state: GameState): void {
+  const occupied = getOccupied(state)
+  let attempts = 0
+  while (attempts < 100) {
+    const x = Math.floor(Math.random() * GRID_SIZE)
+    const y = Math.floor(Math.random() * GRID_SIZE)
+    if (!occupied.has(`${x},${y}`)) {
+      state.freezeItems.push({ x, y })
       return
     }
     attempts++
@@ -110,33 +134,50 @@ export function applyDirection(
 export function tick(state: GameState): GameState {
   if (state.gameOver) return state
 
-  const aliveSnakes = state.snakes.filter((s) => s.alive)
+  // Decrement frozen ticks
+  for (const snake of state.snakes) {
+    if (snake.frozenTicks > 0) snake.frozenTicks--
+  }
 
-  // Calculate next heads for all alive snakes
+  // Randomly spawn freeze item (~5% chance per tick, max 1 on the field)
+  if (state.freezeItems.length === 0 && Math.random() < 0.05) {
+    spawnFreezeItem(state)
+  }
+
+  const aliveSnakes = state.snakes.filter((s) => s.alive)
+  // Separate moving snakes from frozen ones
+  const movingSnakes = aliveSnakes.filter((s) => s.frozenTicks <= 0)
+  const frozenSnakes = aliveSnakes.filter((s) => s.frozenTicks > 0)
+
+  // Calculate next heads for moving snakes only
   const nextHeads = new Map<string, Position>()
-  for (const snake of aliveSnakes) {
+  for (const snake of movingSnakes) {
     nextHeads.set(snake.id, getNextHead(snake))
   }
 
   // Check wall collisions
-  for (const snake of aliveSnakes) {
+  for (const snake of movingSnakes) {
     const head = nextHeads.get(snake.id)!
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
       snake.alive = false
     }
   }
 
-  // Check body collisions (against all snake bodies including own)
-  for (const snake of aliveSnakes) {
+  // Check body collisions (against all snake bodies including frozen ones)
+  for (const snake of movingSnakes) {
     if (!snake.alive) continue
     const head = nextHeads.get(snake.id)!
 
     for (const other of state.snakes) {
-      // Check against body (skip last segment as it will move away, unless it ate)
       const bodyToCheck = other.body
       for (const segment of bodyToCheck) {
         if (head.x === segment.x && head.y === segment.y) {
-          snake.alive = false
+          // Moving into a frozen snake kills the frozen one instead
+          if (frozenSnakes.includes(other) && other.id !== snake.id) {
+            other.alive = false
+          } else {
+            snake.alive = false
+          }
           break
         }
       }
@@ -144,12 +185,12 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  // Check head-to-head collisions
-  for (const snake of aliveSnakes) {
+  // Check head-to-head collisions (only between moving snakes)
+  for (const snake of movingSnakes) {
     if (!snake.alive) continue
     const head = nextHeads.get(snake.id)!
 
-    for (const other of aliveSnakes) {
+    for (const other of movingSnakes) {
       if (other.id === snake.id || !other.alive) continue
       const otherHead = nextHeads.get(other.id)!
       if (head.x === otherHead.x && head.y === otherHead.y) {
@@ -159,8 +200,8 @@ export function tick(state: GameState): GameState {
     }
   }
 
-  // Move alive snakes and check fruit consumption
-  for (const snake of aliveSnakes) {
+  // Move alive moving snakes and check fruit/freeze consumption
+  for (const snake of movingSnakes) {
     if (!snake.alive) continue
     const head = nextHeads.get(snake.id)!
 
@@ -169,6 +210,12 @@ export function tick(state: GameState): GameState {
       (f) => f.x === head.x && f.y === head.y
     )
     const ateFruit = fruitIndex !== -1
+
+    // Check freeze item
+    const freezeIndex = state.freezeItems.findIndex(
+      (f) => f.x === head.x && f.y === head.y
+    )
+    const ateFreezeItem = freezeIndex !== -1
 
     // Move: add head
     snake.body.unshift(head)
@@ -180,6 +227,16 @@ export function tick(state: GameState): GameState {
     } else {
       // Remove tail
       snake.body.pop()
+    }
+
+    // Apply freeze to all enemies
+    if (ateFreezeItem) {
+      state.freezeItems.splice(freezeIndex, 1)
+      for (const other of state.snakes) {
+        if (other.id !== snake.id && other.alive) {
+          other.frozenTicks = FREEZE_DURATION_TICKS
+        }
+      }
     }
   }
 

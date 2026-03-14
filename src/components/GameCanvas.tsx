@@ -137,10 +137,49 @@ export default function GameCanvas({
       ctx.fill()
     }
 
+    // Freeze items
+    for (const fi of gameState.freezeItems) {
+      const fx = fi.x * (CELL_SIZE + GAP) + GAP
+      const fy = fi.y * (CELL_SIZE + GAP) + GAP
+      const cx = fx + CELL_SIZE / 2
+      const cy = fy + CELL_SIZE / 2
+
+      // Icy blue glow
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)'
+      ctx.beginPath()
+      ctx.arc(cx, cy, CELL_SIZE / 2 + 2, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Main crystal
+      ctx.fillStyle = '#38bdf8'
+      ctx.beginPath()
+      ctx.arc(cx, cy, CELL_SIZE / 2 - 1, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Snowflake cross pattern
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 1.5
+      const r = CELL_SIZE / 2 - 3
+      for (let a = 0; a < 3; a++) {
+        const angle = (a * Math.PI) / 3
+        ctx.beginPath()
+        ctx.moveTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r)
+        ctx.lineTo(cx - Math.cos(angle) * r, cy - Math.sin(angle) * r)
+        ctx.stroke()
+      }
+
+      // Center shine
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      ctx.beginPath()
+      ctx.arc(cx - 2, cy - 2, 2.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
     // Snakes
     for (const snake of gameState.snakes) {
       if (snake.body.length === 0) continue
       const isMe = snake.id === myId
+      const isFrozen = snake.frozenTicks > 0
       const alpha = snake.alive ? 1 : 0.3
 
       for (let i = 0; i < snake.body.length; i++) {
@@ -149,11 +188,21 @@ export default function GameCanvas({
         const sy = seg.y * (CELL_SIZE + GAP) + GAP
 
         ctx.globalAlpha = alpha
-        ctx.fillStyle = snake.color
+        ctx.fillStyle = isFrozen ? '#7dd3fc' : snake.color
         const radius = 4
         ctx.beginPath()
         ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
         ctx.fill()
+
+        // Frozen ice overlay
+        if (isFrozen && snake.alive) {
+          ctx.globalAlpha = 0.35
+          ctx.fillStyle = '#38bdf8'
+          ctx.beginPath()
+          ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
+          ctx.fill()
+          ctx.globalAlpha = alpha
+        }
 
         // Head
         if (i === 0) {

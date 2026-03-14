@@ -83,7 +83,7 @@ export default function GameScreen({
           if (dir) applyDirection(state, bot.id, dir)
         }
 
-        const newState = tick({ ...state, snakes: state.snakes.map((s) => ({ ...s, body: [...s.body] })), fruits: [...state.fruits] })
+        const newState = tick({ ...state, snakes: state.snakes.map((s) => ({ ...s, body: [...s.body] })), fruits: [...state.fruits], freezeItems: [...state.freezeItems] })
         gameRef.current = newState
         setGameState(newState)
 
