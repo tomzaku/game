@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { type Player, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES } from '../game/types'
+import { type Player, type GameConfig, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES, DEFAULT_CONFIG } from '../game/types'
 
 interface WaitingRoomProps {
   channel: RealtimeChannel
@@ -8,7 +8,7 @@ interface WaitingRoomProps {
   myId: string
   isHost: boolean
   roomCode: string
-  onStart: (players: Player[]) => void
+  onStart: (players: Player[], config: GameConfig) => void
   onLeave: () => void
 }
 
@@ -29,6 +29,7 @@ export default function WaitingRoom({
 }: WaitingRoomProps) {
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
   const [copied, setCopied] = useState(false)
+  const [config, setConfig] = useState<GameConfig>(DEFAULT_CONFIG)
 
   // Keep player list updated via presence
   useEffect(() => {
@@ -60,14 +61,19 @@ export default function WaitingRoom({
       const { botId } = payload as { botId: string }
       setPlayers((prev) => prev.filter((p) => p.id !== botId))
     })
+
+    // Listen for config updates from host
+    channel.on('broadcast', { event: 'config-update' }, ({ payload }) => {
+      setConfig(payload as GameConfig)
+    })
   }, [channel])
 
   // Listen for host starting the game
   useEffect(() => {
     channel.on('broadcast', { event: 'game-start' }, ({ payload }) => {
-      const { players: gamePlayers } = payload as { players: Player[] }
+      const { players: gamePlayers, config: gameConfig } = payload as { players: Player[]; config: GameConfig }
       if (gamePlayers) setPlayers(gamePlayers)
-      onStart(gamePlayers || players)
+      onStart(gamePlayers || players, gameConfig || config)
     })
   }, [channel, onStart])
 
@@ -99,14 +105,24 @@ export default function WaitingRoom({
     })
   }
 
+  const handleToggleWallPass = () => {
+    const newConfig = { ...config, wallPass: !config.wallPass }
+    setConfig(newConfig)
+    channel.send({
+      type: 'broadcast',
+      event: 'config-update',
+      payload: newConfig,
+    })
+  }
+
   const handleStart = () => {
     if (!isHost || players.length < 2) return
     channel.send({
       type: 'broadcast',
       event: 'game-start',
-      payload: { players },
+      payload: { players, config },
     })
-    onStart(players)
+    onStart(players, config)
   }
 
   const handleCopyLink = () => {
@@ -154,6 +170,17 @@ export default function WaitingRoom({
           </div>
         ))}
       </div>
+
+      <div className="game-config">
+        <label className="config-toggle" onClick={isHost ? handleToggleWallPass : undefined}>
+          <span className={`toggle-switch ${config.wallPass ? 'on' : ''}`}>
+            <span className="toggle-knob" />
+          </span>
+          <span className="config-label">Wall Pass</span>
+          {!isHost && <span className="config-hint">(host only)</span>}
+        </label>
+      </div>
+
       {isHost && players.length < MAX_PLAYERS && (
         <button className="btn btn-secondary" onClick={handleAddBot}>
           + Add Bot

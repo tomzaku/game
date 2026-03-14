@@ -21,6 +21,13 @@ function isInBounds(pos: Position): boolean {
   return pos.x >= 0 && pos.x < GRID_SIZE && pos.y >= 0 && pos.y < GRID_SIZE
 }
 
+function wrap(pos: Position): Position {
+  return {
+    x: ((pos.x % GRID_SIZE) + GRID_SIZE) % GRID_SIZE,
+    y: ((pos.y % GRID_SIZE) + GRID_SIZE) % GRID_SIZE,
+  }
+}
+
 /**
  * BFS to find shortest path to the nearest fruit.
  * Returns the first direction to take, or null if no path found.
@@ -29,19 +36,27 @@ function bfsToFruit(
   head: Position,
   currentDir: Direction,
   occupied: Set<string>,
-  fruits: Position[]
+  fruits: Position[],
+  wallPass: boolean
 ): Direction | null {
   const fruitSet = new Set(fruits.map((f) => `${f.x},${f.y}`))
   const queue: { pos: Position; firstDir: Direction }[] = []
   const visited = new Set<string>()
   visited.add(`${head.x},${head.y}`)
 
+  const resolve = (pos: Position): Position | null => {
+    if (wallPass) return wrap(pos)
+    return isInBounds(pos) ? pos : null
+  }
+
   // Enqueue valid neighbors (respecting no 180-turn rule)
   for (const dir of DIRECTIONS) {
     if (dir === OPPOSITES[currentDir]) continue
-    const next = move(head, dir)
+    const raw = move(head, dir)
+    const next = resolve(raw)
+    if (!next) continue
     const key = `${next.x},${next.y}`
-    if (!isInBounds(next) || occupied.has(key)) continue
+    if (occupied.has(key)) continue
     if (fruitSet.has(key)) return dir
     visited.add(key)
     queue.push({ pos: next, firstDir: dir })
@@ -53,9 +68,11 @@ function bfsToFruit(
     const { pos, firstDir } = queue[i++]
 
     for (const dir of DIRECTIONS) {
-      const next = move(pos, dir)
+      const raw = move(pos, dir)
+      const next = resolve(raw)
+      if (!next) continue
       const key = `${next.x},${next.y}`
-      if (!isInBounds(next) || visited.has(key) || occupied.has(key)) continue
+      if (visited.has(key) || occupied.has(key)) continue
       if (fruitSet.has(key)) return firstDir
       visited.add(key)
       queue.push({ pos: next, firstDir })
@@ -69,7 +86,7 @@ function bfsToFruit(
  * Count reachable cells from a position using flood fill.
  * Used to avoid trapping ourselves in small spaces.
  */
-function floodFillCount(start: Position, occupied: Set<string>): number {
+function floodFillCount(start: Position, occupied: Set<string>, wallPass: boolean): number {
   const visited = new Set<string>()
   const stack: Position[] = [start]
   visited.add(`${start.x},${start.y}`)
@@ -82,9 +99,10 @@ function floodFillCount(start: Position, occupied: Set<string>): number {
     if (count > 50) return count
 
     for (const dir of DIRECTIONS) {
-      const next = move(pos, dir)
+      const raw = move(pos, dir)
+      const next = wallPass ? wrap(raw) : raw
       const key = `${next.x},${next.y}`
-      if (isInBounds(next) && !visited.has(key) && !occupied.has(key)) {
+      if ((wallPass || isInBounds(next)) && !visited.has(key) && !occupied.has(key)) {
         visited.add(key)
         stack.push(next)
       }
@@ -103,6 +121,7 @@ export function computeBotDirection(state: GameState, botId: string): Direction 
 
   const head = snake.body[0]
   const currentDir = snake.direction
+  const wallPass = state.config.wallPass
 
   // Build occupied set from all snake bodies
   const occupied = new Set<string>()
@@ -117,21 +136,23 @@ export function computeBotDirection(state: GameState, botId: string): Direction 
   const targets = state.freezeItems.length > 0
     ? [...state.freezeItems, ...state.fruits]
     : state.fruits
-  const bfsDir = bfsToFruit(head, currentDir, occupied, targets)
+  const bfsDir = bfsToFruit(head, currentDir, occupied, targets, wallPass)
 
   // Get all safe directions (not wall, not body)
   const safeDirs = DIRECTIONS.filter((dir) => {
     if (dir === OPPOSITES[currentDir]) return false
-    const next = move(head, dir)
-    return isInBounds(next) && !occupied.has(`${next.x},${next.y}`)
+    const raw = move(head, dir)
+    const next = wallPass ? wrap(raw) : raw
+    return (wallPass || isInBounds(next)) && !occupied.has(`${next.x},${next.y}`)
   })
 
   if (safeDirs.length === 0) return null // doomed
 
   // If BFS found a path, check that direction doesn't lead to a tiny dead-end
   if (bfsDir && safeDirs.includes(bfsDir)) {
-    const next = move(head, bfsDir)
-    const space = floodFillCount(next, occupied)
+    const raw = move(head, bfsDir)
+    const next = wallPass ? wrap(raw) : raw
+    const space = floodFillCount(next, occupied, wallPass)
     // Only follow BFS if we have enough room (at least our body length)
     if (space >= snake.body.length) return bfsDir
   }
@@ -140,8 +161,9 @@ export function computeBotDirection(state: GameState, botId: string): Direction 
   let bestDir = safeDirs[0]
   let bestSpace = 0
   for (const dir of safeDirs) {
-    const next = move(head, dir)
-    const space = floodFillCount(next, occupied)
+    const raw = move(head, dir)
+    const next = wallPass ? wrap(raw) : raw
+    const space = floodFillCount(next, occupied, wallPass)
     if (space > bestSpace) {
       bestSpace = space
       bestDir = dir

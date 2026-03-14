@@ -1,5 +1,6 @@
 import {
   type GameState,
+  type GameConfig,
   type Snake,
   type Position,
   type Direction,
@@ -8,10 +9,15 @@ import {
   SPAWN_POSITIONS,
   SPAWN_DIRECTIONS,
   FREEZE_DURATION_TICKS,
+  FREEZE_SPAWN_INTERVAL,
+  REVERSE_SPAWN_INTERVAL,
+  REVERSE_DURATION_TICKS,
+  DEFAULT_CONFIG,
 } from './types'
 
 export function createInitialState(
-  players: { id: string; name: string }[]
+  players: { id: string; name: string }[],
+  config: GameConfig = DEFAULT_CONFIG
 ): GameState {
   const snakes: Snake[] = players.map((p, i) => ({
     id: p.id,
@@ -32,6 +38,7 @@ export function createInitialState(
     score: 0,
     color: PLAYER_COLORS[i],
     frozenTicks: 0,
+    reversedTicks: 0,
   }))
 
   const fruits: Position[] = []
@@ -39,10 +46,14 @@ export function createInitialState(
     snakes,
     fruits,
     freezeItems: [],
+    freezeSpawnTimer: FREEZE_SPAWN_INTERVAL,
+    reverseItems: [],
+    reverseSpawnTimer: REVERSE_SPAWN_INTERVAL,
     timeLeft: 60,
     started: false,
     gameOver: false,
     gridSize: GRID_SIZE,
+    config,
   }
 
   // Spawn initial fruits
@@ -65,6 +76,9 @@ function getOccupied(state: GameState): Set<string> {
   }
   for (const fi of state.freezeItems) {
     occupied.add(`${fi.x},${fi.y}`)
+  }
+  for (const ri of state.reverseItems) {
+    occupied.add(`${ri.x},${ri.y}`)
   }
   return occupied
 }
@@ -97,6 +111,20 @@ function spawnFreezeItem(state: GameState): void {
   }
 }
 
+function spawnReverseItem(state: GameState): void {
+  const occupied = getOccupied(state)
+  let attempts = 0
+  while (attempts < 100) {
+    const x = Math.floor(Math.random() * GRID_SIZE)
+    const y = Math.floor(Math.random() * GRID_SIZE)
+    if (!occupied.has(`${x},${y}`)) {
+      state.reverseItems.push({ x, y })
+      return
+    }
+    attempts++
+  }
+}
+
 function getNextHead(snake: Snake): Position {
   const head = snake.body[0]
   switch (snake.direction) {
@@ -111,6 +139,13 @@ function getNextHead(snake: Snake): Position {
   }
 }
 
+const OPPOSITES: Record<Direction, Direction> = {
+  UP: 'DOWN',
+  DOWN: 'UP',
+  LEFT: 'RIGHT',
+  RIGHT: 'LEFT',
+}
+
 export function applyDirection(
   state: GameState,
   playerId: string,
@@ -119,14 +154,13 @@ export function applyDirection(
   const snake = state.snakes.find((s) => s.id === playerId)
   if (!snake || !snake.alive) return
 
-  // Prevent 180-degree turns based on current direction
-  const opposites: Record<Direction, Direction> = {
-    UP: 'DOWN',
-    DOWN: 'UP',
-    LEFT: 'RIGHT',
-    RIGHT: 'LEFT',
+  // If controls are reversed, flip the input direction
+  if (snake.reversedTicks > 0) {
+    direction = OPPOSITES[direction]
   }
-  if (opposites[direction] === snake.direction) return
+
+  // Prevent 180-degree turns based on current direction
+  if (OPPOSITES[direction] === snake.direction) return
 
   // Also prevent moving into the neck (handles rapid key changes between ticks)
   if (snake.body.length >= 2) {
@@ -145,14 +179,24 @@ export function applyDirection(
 export function tick(state: GameState): GameState {
   if (state.gameOver) return state
 
-  // Decrement frozen ticks
+  // Decrement frozen and reversed ticks
   for (const snake of state.snakes) {
     if (snake.frozenTicks > 0) snake.frozenTicks--
+    if (snake.reversedTicks > 0) snake.reversedTicks--
   }
 
-  // Randomly spawn freeze item (~5% chance per tick, max 1 on the field)
-  if (state.freezeItems.length === 0 && Math.random() < 0.05) {
+  // Spawn freeze item every 20 seconds
+  state.freezeSpawnTimer--
+  if (state.freezeSpawnTimer <= 0) {
     spawnFreezeItem(state)
+    state.freezeSpawnTimer = FREEZE_SPAWN_INTERVAL
+  }
+
+  // Spawn reverse item every 30 seconds
+  state.reverseSpawnTimer--
+  if (state.reverseSpawnTimer <= 0) {
+    spawnReverseItem(state)
+    state.reverseSpawnTimer = REVERSE_SPAWN_INTERVAL
   }
 
   const aliveSnakes = state.snakes.filter((s) => s.alive)
@@ -166,11 +210,17 @@ export function tick(state: GameState): GameState {
     nextHeads.set(snake.id, getNextHead(snake))
   }
 
-  // Check wall collisions
+  // Handle wall collisions
   for (const snake of movingSnakes) {
     const head = nextHeads.get(snake.id)!
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
-      snake.alive = false
+      if (state.config.wallPass) {
+        // Wrap around to opposite side
+        head.x = ((head.x % GRID_SIZE) + GRID_SIZE) % GRID_SIZE
+        head.y = ((head.y % GRID_SIZE) + GRID_SIZE) % GRID_SIZE
+      } else {
+        snake.alive = false
+      }
     }
   }
 
@@ -228,6 +278,12 @@ export function tick(state: GameState): GameState {
     )
     const ateFreezeItem = freezeIndex !== -1
 
+    // Check reverse item
+    const reverseIndex = state.reverseItems.findIndex(
+      (f) => f.x === head.x && f.y === head.y
+    )
+    const ateReverseItem = reverseIndex !== -1
+
     // Move: add head
     snake.body.unshift(head)
 
@@ -246,6 +302,16 @@ export function tick(state: GameState): GameState {
       for (const other of state.snakes) {
         if (other.id !== snake.id && other.alive) {
           other.frozenTicks = FREEZE_DURATION_TICKS
+        }
+      }
+    }
+
+    // Reverse controls of all enemies for 5 seconds
+    if (ateReverseItem) {
+      state.reverseItems.splice(reverseIndex, 1)
+      for (const other of state.snakes) {
+        if (other.id !== snake.id && other.alive) {
+          other.reversedTicks = REVERSE_DURATION_TICKS
         }
       }
     }

@@ -175,11 +175,54 @@ export default function GameCanvas({
       ctx.fill()
     }
 
+    // Reverse items
+    for (const ri of gameState.reverseItems) {
+      const rx = ri.x * (CELL_SIZE + GAP) + GAP
+      const ry = ri.y * (CELL_SIZE + GAP) + GAP
+      const cx = rx + CELL_SIZE / 2
+      const cy = ry + CELL_SIZE / 2
+
+      // Yellow glow
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.2)'
+      ctx.beginPath()
+      ctx.arc(cx, cy, CELL_SIZE / 2 + 2, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Main circle
+      ctx.fillStyle = '#facc15'
+      ctx.beginPath()
+      ctx.arc(cx, cy, CELL_SIZE / 2 - 1, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Reverse arrows (U-turn symbol)
+      ctx.strokeStyle = '#1a1a2e'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(cx, cy, 4, Math.PI, 0, false)
+      ctx.stroke()
+      // Left arrowhead
+      ctx.beginPath()
+      ctx.moveTo(cx - 4, cy - 3)
+      ctx.lineTo(cx - 4, cy + 2)
+      ctx.lineTo(cx - 7, cy)
+      ctx.closePath()
+      ctx.fillStyle = '#1a1a2e'
+      ctx.fill()
+      // Right arrowhead
+      ctx.beginPath()
+      ctx.moveTo(cx + 4, cy - 3)
+      ctx.lineTo(cx + 4, cy + 2)
+      ctx.lineTo(cx + 7, cy)
+      ctx.closePath()
+      ctx.fill()
+    }
+
     // Snakes
     for (const snake of gameState.snakes) {
       if (snake.body.length === 0) continue
       const isMe = snake.id === myId
       const isFrozen = snake.frozenTicks > 0
+      const isReversed = snake.reversedTicks > 0
       const alpha = snake.alive ? 1 : 0.3
 
       for (let i = 0; i < snake.body.length; i++) {
@@ -198,6 +241,16 @@ export default function GameCanvas({
         if (isFrozen && snake.alive) {
           ctx.globalAlpha = 0.35
           ctx.fillStyle = '#38bdf8'
+          ctx.beginPath()
+          ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
+          ctx.fill()
+          ctx.globalAlpha = alpha
+        }
+
+        // Reversed yellow overlay
+        if (isReversed && snake.alive) {
+          ctx.globalAlpha = 0.3
+          ctx.fillStyle = '#facc15'
           ctx.beginPath()
           ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
           ctx.fill()

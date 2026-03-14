@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { type GameState, type Player, type Direction, TICK_RATE } from '../game/types'
+import { type GameState, type GameConfig, type Player, type Direction, TICK_RATE, DEFAULT_CONFIG } from '../game/types'
 import { createInitialState, applyDirection, tick } from '../game/engine'
 import { computeBotDirection } from '../game/bot'
 import GameCanvas from './GameCanvas'
@@ -11,6 +11,7 @@ interface GameScreenProps {
   players: Player[]
   myId: string
   isHost: boolean
+  config: GameConfig
   onBackToRoom: () => void
   onLeave: () => void
 }
@@ -20,11 +21,12 @@ export default function GameScreen({
   players,
   myId,
   isHost,
+  config,
   onBackToRoom,
   onLeave,
 }: GameScreenProps) {
   const [gameState, setGameState] = useState<GameState>(() =>
-    createInitialState(players)
+    createInitialState(players, config)
   )
   const gameRef = useRef(gameState)
   gameRef.current = gameState
@@ -83,7 +85,7 @@ export default function GameScreen({
           if (dir) applyDirection(state, bot.id, dir)
         }
 
-        const newState = tick({ ...state, snakes: state.snakes.map((s) => ({ ...s, body: [...s.body] })), fruits: [...state.fruits], freezeItems: [...state.freezeItems] })
+        const newState = tick({ ...state, snakes: state.snakes.map((s) => ({ ...s, body: [...s.body] })), fruits: [...state.fruits], freezeItems: [...state.freezeItems], reverseItems: [...state.reverseItems] })
         gameRef.current = newState
         setGameState(newState)
 
@@ -198,8 +200,23 @@ export default function GameScreen({
         <div className="eliminated-banner">You were eliminated!</div>
       )}
 
-      <div className="controls-hint">
+      <div className="controls-hint desktop-only">
         Arrow keys or WASD to move
+      </div>
+
+      <div className="dpad mobile-only">
+        <button className="dpad-btn dpad-up" onTouchStart={(e) => { e.preventDefault(); handleDirection('UP') }}>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4l-8 8h16z" fill="currentColor"/></svg>
+        </button>
+        <button className="dpad-btn dpad-left" onTouchStart={(e) => { e.preventDefault(); handleDirection('LEFT') }}>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 12l8-8v16z" fill="currentColor"/></svg>
+        </button>
+        <button className="dpad-btn dpad-right" onTouchStart={(e) => { e.preventDefault(); handleDirection('RIGHT') }}>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M20 12l-8-8v16z" fill="currentColor"/></svg>
+        </button>
+        <button className="dpad-btn dpad-down" onTouchStart={(e) => { e.preventDefault(); handleDirection('DOWN') }}>
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 20l8-8H4z" fill="currentColor"/></svg>
+        </button>
       </div>
 
       {gameState.gameOver && (

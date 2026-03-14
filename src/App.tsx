@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import type { Player } from './game/types'
+import { type Player, type GameConfig, DEFAULT_CONFIG } from './game/types'
 import Lobby from './components/Lobby'
 import WaitingRoom from './components/WaitingRoom'
 import GameScreen from './components/GameScreen'
@@ -13,6 +13,7 @@ type RoomInfo = {
   myId: string
   isHost: boolean
   roomCode: string
+  config: GameConfig
 }
 
 type Screen =
@@ -24,8 +25,8 @@ function App() {
   const [screen, setScreen] = useState<Screen>({ type: 'lobby' })
 
   const handleGameStart = useCallback(
-    (channel: RealtimeChannel, players: Player[], myId: string, isHost: boolean, roomCode: string) => {
-      setScreen({ type: 'game', channel, players, myId, isHost, roomCode })
+    (channel: RealtimeChannel, players: Player[], myId: string, isHost: boolean, roomCode: string, config: GameConfig) => {
+      setScreen({ type: 'game', channel, players, myId, isHost, roomCode, config })
     },
     []
   )
@@ -36,9 +37,9 @@ function App() {
     }
   }, [screen])
 
-  const handleStartFromRoom = useCallback((players: Player[]) => {
+  const handleStartFromRoom = useCallback((players: Player[], config: GameConfig) => {
     if (screen.type === 'waiting') {
-      setScreen({ ...screen, type: 'game', players })
+      setScreen({ ...screen, type: 'game', players, config })
     }
   }, [screen])
 
@@ -56,6 +57,7 @@ function App() {
         players={screen.players}
         myId={screen.myId}
         isHost={screen.isHost}
+        config={screen.config}
         onBackToRoom={handleBackToRoom}
         onLeave={handleLeave}
       />

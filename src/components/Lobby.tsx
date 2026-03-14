@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
-import { type Player, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES } from '../game/types'
+import { type Player, type GameConfig, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES, DEFAULT_CONFIG } from '../game/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 interface LobbyProps {
@@ -9,7 +9,8 @@ interface LobbyProps {
     players: Player[],
     myId: string,
     isHost: boolean,
-    roomCode: string
+    roomCode: string,
+    config: GameConfig
   ) => void
   initialRoomCode?: string
 }
@@ -41,6 +42,7 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
   const [error, setError] = useState('')
   const [joining, setJoining] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [config, setConfig] = useState<GameConfig>(DEFAULT_CONFIG)
 
   const joinRoom = useCallback(
     (code: string, hosting: boolean) => {
@@ -76,9 +78,10 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
       })
 
       ch.on('broadcast', { event: 'game-start' }, ({ payload }) => {
-        const { players: gamePlayers } = (payload || {}) as { players?: Player[] }
+        const { players: gamePlayers, config: gameConfig } = (payload || {}) as { players?: Player[]; config?: GameConfig }
+        const finalConfig = gameConfig || DEFAULT_CONFIG
         if (gamePlayers) {
-          onGameStart(ch, gamePlayers, myId, hosting, code)
+          onGameStart(ch, gamePlayers, myId, hosting, code, finalConfig)
         } else {
           const presenceState = ch.presenceState()
           const playerList: Player[] = []
@@ -87,7 +90,7 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
             if (p?.id) playerList.push(p)
           }
           playerList.sort((a, b) => (a.isHost === b.isHost ? 0 : a.isHost ? -1 : 1))
-          onGameStart(ch, playerList, myId, hosting, code)
+          onGameStart(ch, playerList, myId, hosting, code, finalConfig)
         }
       })
 
@@ -98,6 +101,11 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
       ch.on('broadcast', { event: 'bot-removed' }, ({ payload }) => {
         const { botId } = payload as { botId: string }
         setPlayers((prev) => prev.filter((p) => p.id !== botId))
+      })
+
+      // Listen for config updates from host
+      ch.on('broadcast', { event: 'config-update' }, ({ payload }) => {
+        setConfig(payload as GameConfig)
       })
 
       ch.subscribe(async (status) => {
@@ -159,14 +167,24 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
     })
   }
 
+  const handleToggleWallPass = () => {
+    const newConfig = { ...config, wallPass: !config.wallPass }
+    setConfig(newConfig)
+    channel?.send({
+      type: 'broadcast',
+      event: 'config-update',
+      payload: newConfig,
+    })
+  }
+
   const handleStart = () => {
     if (!channel || players.length < 2) return
     channel.send({
       type: 'broadcast',
       event: 'game-start',
-      payload: { players },
+      payload: { players, config },
     })
-    onGameStart(channel, players, myId, true, roomCode)
+    onGameStart(channel, players, myId, true, roomCode, config)
   }
 
   const handleCopyLink = () => {
@@ -285,6 +303,16 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
           </div>
         ))}
       </div>
+      <div className="game-config">
+        <label className="config-toggle" onClick={isHost ? handleToggleWallPass : undefined}>
+          <span className={`toggle-switch ${config.wallPass ? 'on' : ''}`}>
+            <span className="toggle-knob" />
+          </span>
+          <span className="config-label">Wall Pass</span>
+          {!isHost && <span className="config-hint">(host only)</span>}
+        </label>
+      </div>
+
       {isHost && players.length < MAX_PLAYERS && (
         <button className="btn btn-secondary" onClick={handleAddBot}>
           + Add Bot
