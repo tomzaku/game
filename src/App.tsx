@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { type Player, type GameConfig, DEFAULT_CONFIG } from './game/types'
+import { type Player, type GameConfig } from './game/types'
 import Lobby from './components/Lobby'
 import WaitingRoom from './components/WaitingRoom'
 import GameScreen from './components/GameScreen'

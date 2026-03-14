@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { type GameState, type GameConfig, type Player, type Direction, TICK_RATE, DEFAULT_CONFIG } from '../game/types'
+import { type GameState, type GameConfig, type Player, type Direction, TICK_RATE } from '../game/types'
 import { createInitialState, applyDirection, tick } from '../game/engine'
 import { computeBotDirection } from '../game/bot'
 import GameCanvas from './GameCanvas'
