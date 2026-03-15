@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { type Player, type GameConfig } from './game/types'
@@ -22,6 +23,7 @@ type Screen =
   | { type: 'game' } & RoomInfo
 
 function App() {
+  const [searchParams] = useSearchParams()
   const [screen, setScreen] = useState<Screen>({ type: 'lobby' })
 
   const handleGameStart = useCallback(
@@ -78,7 +80,7 @@ function App() {
     )
   }
 
-  return <Lobby onGameStart={handleGameStart} initialRoomCode={new URLSearchParams(window.location.search).get('room') || undefined} />
+  return <Lobby onGameStart={handleGameStart} initialRoomCode={searchParams.get('room') || undefined} />
 }
 
 export default App

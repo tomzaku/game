@@ -1,0 +1,951 @@
+/* ── Audition Game — Neon Arcade ── */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --aud-bg: #05060f;
+  --aud-surface: #0c0e1a;
+  --aud-border: #1a1d35;
+  --aud-text: #c8cde0;
+  --aud-text-dim: #4a5070;
+  --aud-neon-cyan: #00f0ff;
+  --aud-neon-magenta: #ff00aa;
+  --aud-neon-lime: #aaff00;
+  --aud-neon-orange: #ff8800;
+}
+
+/* ── Root ── */
+.audition-root {
+  position: fixed;
+  inset: 0;
+  background: var(--aud-bg);
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--aud-text);
+  overflow: hidden;
+  user-select: none;
+}
+
+.audition-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+.audition-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ── Setup ── */
+.audition-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.audition-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 64px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+  background: linear-gradient(135deg, var(--aud-neon-cyan), var(--aud-neon-magenta), var(--aud-neon-cyan));
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: title-shimmer 3s linear infinite;
+  filter: drop-shadow(0 0 30px rgba(0, 240, 255, 0.3));
+}
+
+@keyframes title-shimmer {
+  to { background-position: 200% center; }
+}
+
+.audition-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  color: var(--aud-neon-cyan);
+  letter-spacing: 12px;
+  text-transform: uppercase;
+  margin-bottom: 56px;
+  opacity: 0.7;
+}
+
+.audition-player-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.audition-player-select label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: var(--aud-text-dim);
+  text-transform: uppercase;
+}
+
+.audition-player-btns {
+  display: flex;
+  gap: 16px;
+}
+
+.audition-player-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  border: 2px solid var(--aud-border);
+  background: var(--aud-surface);
+  color: var(--aud-text);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.audition-player-btn:hover {
+  border-color: var(--aud-neon-cyan);
+  background: rgba(0, 240, 255, 0.05);
+}
+
+.audition-player-btn.active {
+  border-color: var(--aud-neon-cyan);
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--aud-neon-cyan);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2), inset 0 0 20px rgba(0, 240, 255, 0.05);
+}
+
+.audition-name-inputs {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.audition-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.audition-name-field .player-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.audition-name-field input {
+  width: 160px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--aud-border);
+  background: var(--aud-surface);
+  color: var(--aud-text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.audition-name-field input:focus {
+  border-color: var(--player-color);
+}
+
+.audition-name-field input::placeholder {
+  color: var(--aud-text-dim);
+}
+
+.audition-key-hints {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.audition-key-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--aud-surface);
+  border: 1px solid var(--aud-border);
+}
+
+.audition-key-hint .hint-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.audition-key-hint .hint-keys {
+  font-size: 13px;
+  color: var(--aud-text-dim);
+}
+
+.audition-key-hint .hint-keys kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--aud-text);
+  margin: 0 2px;
+}
+
+.audition-difficulty {
+  display: flex;
+  gap: 12px;
+}
+
+.audition-diff-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 2px solid var(--aud-border);
+  background: var(--aud-surface);
+  color: var(--aud-text-dim);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.audition-diff-btn:hover {
+  border-color: var(--aud-neon-magenta);
+}
+
+.audition-diff-btn.active {
+  border-color: var(--aud-neon-magenta);
+  color: var(--aud-neon-magenta);
+  background: rgba(255, 0, 170, 0.08);
+  box-shadow: 0 0 16px rgba(255, 0, 170, 0.15);
+}
+
+.audition-start-btn {
+  margin-top: 8px;
+  padding: 16px 64px;
+  border-radius: 12px;
+  border: 2px solid var(--aud-neon-cyan);
+  background: rgba(0, 240, 255, 0.08);
+  color: var(--aud-neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.audition-start-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  animation: btn-sweep 2s infinite;
+}
+
+@keyframes btn-sweep {
+  to { transform: translateX(100%); }
+}
+
+.audition-start-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+  transform: scale(1.02);
+}
+
+.audition-back-btn {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--aud-border);
+  background: transparent;
+  color: var(--aud-text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.audition-back-btn:hover {
+  border-color: var(--aud-neon-cyan);
+  color: var(--aud-neon-cyan);
+}
+
+/* ── Countdown ── */
+.audition-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  background: rgba(5, 6, 15, 0.85);
+}
+
+.audition-countdown-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 120px;
+  font-weight: 900;
+  color: var(--aud-neon-cyan);
+  text-shadow: 0 0 60px rgba(0, 240, 255, 0.5);
+  animation: countdown-pop 1s ease-out;
+}
+
+@keyframes countdown-pop {
+  0% { transform: scale(2); opacity: 0; }
+  30% { transform: scale(1); opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+
+/* ── Game Screen ── */
+.audition-game {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HUD */
+.audition-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: rgba(5, 6, 15, 0.92);
+  border-bottom: 1px solid var(--aud-border);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.audition-hud-round {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--aud-text-dim);
+  text-transform: uppercase;
+  min-width: 160px;
+}
+
+.audition-hud-phase {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--aud-neon-cyan);
+  text-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+  animation: phase-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes phase-pulse {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+.audition-hud-scores {
+  display: flex;
+  gap: 24px;
+}
+
+.audition-hud-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.audition-hud-player .hud-name {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.audition-hud-player .hud-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.audition-hud-player .hud-combo {
+  font-size: 11px;
+  color: var(--aud-neon-lime);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.audition-hud-player .hud-combo.visible {
+  opacity: 1;
+}
+
+/* ── Stage ── */
+.audition-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 24px;
+  position: relative;
+}
+
+/* Sequence area */
+.audition-sequence-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.audition-sequence-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--aud-text-dim);
+  min-height: 24px;
+}
+
+.audition-sequence-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Individual arrow in sequence */
+.audition-seq-arrow {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  border: 2px solid var(--aud-border);
+  background: var(--aud-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.audition-seq-arrow .seq-arrow-icon {
+  font-size: 24px;
+  color: var(--aud-text-dim);
+  transition: all 0.15s;
+}
+
+.audition-seq-arrow.revealed {
+  border-color: var(--arrow-color);
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+}
+
+.audition-seq-arrow.revealed .seq-arrow-icon {
+  color: var(--arrow-color);
+  font-size: 28px;
+  filter: drop-shadow(0 0 6px var(--arrow-color));
+}
+
+.audition-seq-arrow.current {
+  transform: scale(1.15);
+  border-color: var(--arrow-color);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+}
+
+.audition-seq-arrow.current::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--arrow-color);
+  opacity: 0.08;
+  animation: arrow-flash 0.3s ease-out;
+}
+
+@keyframes arrow-flash {
+  0% { opacity: 0.25; }
+  100% { opacity: 0.08; }
+}
+
+/* ── Player panels ── */
+.audition-players-area {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 1000px;
+}
+
+.audition-player-panel {
+  flex: 1;
+  min-width: 240px;
+  max-width: 400px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--aud-surface);
+  border: 1px solid var(--aud-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.audition-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.panel-combo {
+  font-size: 11px;
+  letter-spacing: 1px;
+  animation: combo-glow 0.5s ease-out;
+}
+
+@keyframes combo-glow {
+  0% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* Arrow input slots */
+.audition-input-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.audition-input-slot {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid var(--aud-border);
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.15s;
+}
+
+.audition-input-slot.current {
+  border-color: var(--player-color);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+  animation: slot-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes slot-pulse {
+  from { border-color: var(--player-color); opacity: 0.7; }
+  to { border-color: var(--player-color); opacity: 1; }
+}
+
+.audition-input-slot.correct {
+  border-color: var(--aud-neon-lime);
+  background: rgba(170, 255, 0, 0.06);
+}
+
+.audition-input-slot.wrong {
+  border-color: #ff2255;
+  background: rgba(255, 34, 85, 0.06);
+}
+
+.audition-input-slot .slot-placeholder {
+  color: var(--aud-text-dim);
+  font-size: 16px;
+}
+
+.audition-input-slot .slot-arrow {
+  font-size: 20px;
+  animation: arrow-pop-in 0.15s ease-out;
+}
+
+@keyframes arrow-pop-in {
+  0% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+/* Round result */
+.audition-round-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px;
+  animation: result-slide-in 0.3s ease-out;
+}
+
+@keyframes result-slide-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.round-grade {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.round-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--aud-text);
+}
+
+/* ── Timing Bar ── */
+.audition-timing-area {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: timing-appear 0.3s ease-out;
+}
+
+@keyframes timing-appear {
+  0% { opacity: 0; transform: scaleX(0.8); }
+  100% { opacity: 1; transform: scaleX(1); }
+}
+
+.audition-timing-bar {
+  position: relative;
+  height: 48px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--aud-border);
+  overflow: hidden;
+}
+
+.timing-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.timing-miss {
+  left: 0;
+  right: 0;
+  background: rgba(255, 34, 85, 0.08);
+}
+
+.timing-good {
+  background: rgba(255, 136, 0, 0.15);
+  border-left: 1px solid rgba(255, 136, 0, 0.3);
+  border-right: 1px solid rgba(255, 136, 0, 0.3);
+}
+
+.timing-great {
+  background: rgba(170, 255, 0, 0.15);
+  border-left: 1px solid rgba(170, 255, 0, 0.3);
+  border-right: 1px solid rgba(170, 255, 0, 0.3);
+}
+
+.timing-perfect {
+  background: rgba(0, 240, 255, 0.2);
+  border-left: 1px solid rgba(0, 240, 255, 0.4);
+  border-right: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1);
+}
+
+.timing-needle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  background: #fff;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8), 0 0 24px rgba(255, 255, 255, 0.4);
+  z-index: 5;
+  transition: none;
+}
+
+.timing-center {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: rgba(0, 240, 255, 0.4);
+  transform: translateX(-50%);
+}
+
+.audition-timing-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 0 4px;
+}
+
+/* ── Results ── */
+.audition-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+  gap: 32px;
+}
+
+.audition-results-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.audition-winner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 48px;
+  border-radius: 16px;
+  background: var(--aud-surface);
+  border: 2px solid;
+  position: relative;
+  overflow: hidden;
+}
+
+.audition-winner-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(var(--winner-rgb), 0.08), transparent);
+  pointer-events: none;
+}
+
+.audition-winner-crown {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.audition-winner-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.audition-winner-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+}
+
+.audition-winner-stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.audition-winner-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.audition-winner-stat .stat-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.audition-winner-stat .stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--aud-text-dim);
+  text-transform: uppercase;
+}
+
+.audition-others {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.audition-other-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 28px;
+  border-radius: 12px;
+  background: var(--aud-surface);
+  border: 1px solid var(--aud-border);
+  min-width: 160px;
+}
+
+.audition-other-rank {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  color: var(--aud-text-dim);
+  letter-spacing: 2px;
+}
+
+.audition-other-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.audition-other-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.audition-other-accuracy {
+  font-size: 12px;
+  color: var(--aud-text-dim);
+}
+
+.audition-result-btns {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.audition-result-btn {
+  padding: 12px 36px;
+  border-radius: 10px;
+  border: 2px solid var(--aud-border);
+  background: var(--aud-surface);
+  color: var(--aud-text);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.audition-result-btn:hover {
+  border-color: var(--aud-neon-cyan);
+  color: var(--aud-neon-cyan);
+}
+
+.audition-result-btn.primary {
+  border-color: var(--aud-neon-cyan);
+  color: var(--aud-neon-cyan);
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.audition-result-btn.primary:hover {
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.2);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .audition-title {
+    font-size: 36px;
+    letter-spacing: 4px;
+  }
+
+  .audition-subtitle {
+    font-size: 11px;
+    letter-spacing: 6px;
+    margin-bottom: 32px;
+  }
+
+  .audition-seq-arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  .audition-seq-arrow .seq-arrow-icon {
+    font-size: 20px;
+  }
+
+  .audition-input-slot {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .audition-stage {
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .audition-hud {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .audition-hud-phase {
+    font-size: 16px;
+  }
+
+  .audition-players-area {
+    gap: 12px;
+  }
+
+  .audition-player-panel {
+    min-width: 200px;
+    padding: 12px 14px;
+  }
+
+  .audition-timing-bar {
+    height: 40px;
+  }
+}
