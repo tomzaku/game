@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { type Player, type GameConfig, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES, DEFAULT_CONFIG } from '../game/types'
 
@@ -31,9 +31,18 @@ export default function WaitingRoom({
   const [copied, setCopied] = useState(false)
   const [config, setConfig] = useState<GameConfig>(DEFAULT_CONFIG)
 
-  // Keep player list updated via presence
+  const mountedRef = useRef(true)
+
+  // Track mounted state
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  // Register channel listeners — use mountedRef guard
   useEffect(() => {
     const syncPlayers = () => {
+      if (!mountedRef.current) return
       const presenceState = channel.presenceState()
       const playerList: Player[] = []
       for (const [, presences] of Object.entries(presenceState)) {
@@ -42,7 +51,6 @@ export default function WaitingRoom({
       }
       playerList.sort((a, b) => (a.isHost === b.isHost ? 0 : a.isHost ? -1 : 1))
       if (playerList.length > 0) {
-        // Preserve bots when syncing presence (bots aren't in presence state)
         setPlayers((prev) => {
           const bots = prev.filter((p) => p.isBot)
           return [...playerList, ...bots]
@@ -53,29 +61,23 @@ export default function WaitingRoom({
     channel.on('presence', { event: 'sync' }, syncPlayers)
     syncPlayers()
 
-    // Listen for bot updates from host
     channel.on('broadcast', { event: 'bot-added' }, ({ payload }) => {
+      if (!mountedRef.current) return
       setPlayers((prev) => [...prev, payload as Player])
     })
     channel.on('broadcast', { event: 'bot-removed' }, ({ payload }) => {
+      if (!mountedRef.current) return
       const { botId } = payload as { botId: string }
       setPlayers((prev) => prev.filter((p) => p.id !== botId))
     })
 
-    // Listen for config updates from host
     channel.on('broadcast', { event: 'config-update' }, ({ payload }) => {
+      if (!mountedRef.current) return
       setConfig(payload as GameConfig)
     })
-  }, [channel])
 
-  // Listen for host starting the game
-  useEffect(() => {
-    channel.on('broadcast', { event: 'game-start' }, ({ payload }) => {
-      const { players: gamePlayers, config: gameConfig } = payload as { players: Player[]; config: GameConfig }
-      if (gamePlayers) setPlayers(gamePlayers)
-      onStart(gamePlayers || players, gameConfig || config)
-    })
-  }, [channel, onStart])
+    // game-start is handled at the App level so it works across remounts
+  }, [channel])
 
   const handleAddBot = () => {
     if (players.length >= MAX_PLAYERS) return

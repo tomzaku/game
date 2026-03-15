@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabase'
 import { type Player, type GameConfig, MAX_PLAYERS, PLAYER_COLORS, PLAYER_COLOR_NAMES, BOT_NAMES, DEFAULT_CONFIG } from '../game/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -33,7 +33,9 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
   const [screen, setScreen] = useState<'menu' | 'create' | 'join'>(
     initialRoomCode ? 'join' : 'menu'
   )
-  const [playerName, setPlayerName] = useState('')
+  const [playerName, setPlayerName] = useState(
+    () => localStorage.getItem('snake-player-name') || ''
+  )
   const [roomCode, setRoomCode] = useState(initialRoomCode || '')
   const [myId] = useState(() => generatePlayerId())
   const [players, setPlayers] = useState<Player[]>([])
@@ -44,12 +46,19 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
   const [copied, setCopied] = useState(false)
   const [config, setConfig] = useState<GameConfig>(DEFAULT_CONFIG)
 
+  // Ref so channel listener always calls the latest callback even after Lobby unmounts
+  const onGameStartRef = useRef(onGameStart)
+  onGameStartRef.current = onGameStart
+
+  const joinRoomRef = useRef<((code: string, hosting: boolean) => void) | null>(null)
+
   const joinRoom = useCallback(
     (code: string, hosting: boolean) => {
       if (!playerName.trim()) {
         setError('Enter your name')
         return
       }
+      if (channel) return
 
       setJoining(true)
       setError('')
@@ -70,31 +79,22 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
           }
         }
         playerList.sort((a, b) => (a.isHost === b.isHost ? 0 : a.isHost ? -1 : 1))
-        // Preserve bots when syncing presence
         setPlayers((prev) => {
           const bots = prev.filter((p) => p.isBot)
           return [...playerList, ...bots]
         })
       })
 
+      // Guest receives these when host starts game or returns to room.
+      // Uses refs so callbacks are always fresh even after Lobby unmounts.
       ch.on('broadcast', { event: 'game-start' }, ({ payload }) => {
         const { players: gamePlayers, config: gameConfig } = (payload || {}) as { players?: Player[]; config?: GameConfig }
         const finalConfig = gameConfig || DEFAULT_CONFIG
         if (gamePlayers) {
-          onGameStart(ch, gamePlayers, myId, hosting, code, finalConfig)
-        } else {
-          const presenceState = ch.presenceState()
-          const playerList: Player[] = []
-          for (const [, presences] of Object.entries(presenceState)) {
-            const p = presences[0] as unknown as Player
-            if (p?.id) playerList.push(p)
-          }
-          playerList.sort((a, b) => (a.isHost === b.isHost ? 0 : a.isHost ? -1 : 1))
-          onGameStart(ch, playerList, myId, hosting, code, finalConfig)
+          onGameStartRef.current(ch, gamePlayers, myId, hosting, code, finalConfig)
         }
       })
 
-      // Listen for bot updates from host
       ch.on('broadcast', { event: 'bot-added' }, ({ payload }) => {
         setPlayers((prev) => [...prev, payload as Player])
       })
@@ -102,8 +102,6 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
         const { botId } = payload as { botId: string }
         setPlayers((prev) => prev.filter((p) => p.id !== botId))
       })
-
-      // Listen for config updates from host
       ch.on('broadcast', { event: 'config-update' }, ({ payload }) => {
         setConfig(payload as GameConfig)
       })
@@ -122,9 +120,19 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
       setChannel(ch)
       setRoomCode(code)
       setIsHost(hosting)
+
+      // Persist for auto-rejoin on refresh
+      localStorage.setItem('snake-room-code', code)
+      localStorage.setItem('snake-is-host', hosting ? '1' : '0')
+
+      const url = new URL(window.location.href)
+      url.searchParams.set('room', code)
+      window.history.replaceState({}, '', url.toString())
     },
-    [myId, playerName, onGameStart]
+    [myId, playerName, channel]
   )
+
+  joinRoomRef.current = joinRoom
 
   const handleCreate = () => {
     const code = generateRoomCode()
@@ -193,12 +201,21 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Clean URL params after reading them
+  // Auto-rejoin room on page refresh
   useEffect(() => {
-    if (initialRoomCode) {
-      window.history.replaceState({}, '', window.location.pathname)
+    const code = initialRoomCode || localStorage.getItem('snake-room-code')
+    const name = localStorage.getItem('snake-player-name')
+    if (code && name && !channel) {
+      const wasHost = localStorage.getItem('snake-is-host') === '1'
+      const timer = setTimeout(() => {
+        if (joinRoomRef.current) {
+          setScreen('create')
+          joinRoomRef.current(code, wasHost)
+        }
+      }, 100)
+      return () => clearTimeout(timer)
     }
-  }, [initialRoomCode])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (screen === 'menu') {
     return (
@@ -212,7 +229,10 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
             type="text"
             placeholder="Your name"
             value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
+            onChange={(e) => {
+              setPlayerName(e.target.value)
+              localStorage.setItem('snake-player-name', e.target.value)
+            }}
             maxLength={12}
             className="input"
           />
@@ -239,7 +259,10 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
             type="text"
             placeholder="Your name"
             value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
+            onChange={(e) => {
+              setPlayerName(e.target.value)
+              localStorage.setItem('snake-player-name', e.target.value)
+            }}
             maxLength={12}
             className="input"
           />

@@ -5,14 +5,18 @@ interface GameOverProps {
   gameState: GameState
   myId: string
   isHost: boolean
-  onBackToRoom: () => void
   onLeave: () => void
 }
 
-export default function GameOver({ gameState, myId, isHost, onBackToRoom, onLeave }: GameOverProps) {
+export default function GameOver({ gameState, myId, isHost, onLeave }: GameOverProps) {
   const winner = getWinner(gameState)
   const isWinner = winner?.id === myId
   const sorted = [...gameState.snakes].sort((a, b) => b.score - a.score)
+
+  const handleRematch = () => {
+    // Hard refresh — auto-rejoin picks up room from URL + localStorage
+    window.location.reload()
+  }
 
   return (
     <div className="game-over-overlay">
@@ -41,13 +45,9 @@ export default function GameOver({ gameState, myId, isHost, onBackToRoom, onLeav
           ))}
         </div>
         <div className="game-over-buttons">
-          {isHost ? (
-            <button className="btn btn-primary" onClick={onBackToRoom}>
-              Waiting Room
-            </button>
-          ) : (
-            <p className="waiting-text">Waiting for host...</p>
-          )}
+          <button className="btn btn-primary" onClick={handleRematch}>
+            Rematch
+          </button>
           <a className="leave-link" onClick={onLeave}>
             Leave Room
           </a>

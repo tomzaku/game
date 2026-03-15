@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { type GameState, type GameConfig, type Player, type Direction, TICK_RATE } from '../game/types'
 import { createInitialState, applyDirection, tick } from '../game/engine'
 import { computeBotDirection } from '../game/bot'
+import { SnakeMusic } from '../game/music'
 import GameCanvas from './GameCanvas'
 import GameOver from './GameOver'
 
@@ -12,7 +13,6 @@ interface GameScreenProps {
   myId: string
   isHost: boolean
   config: GameConfig
-  onBackToRoom: () => void
   onLeave: () => void
 }
 
@@ -22,7 +22,6 @@ export default function GameScreen({
   myId,
   isHost,
   config,
-  onBackToRoom,
   onLeave,
 }: GameScreenProps) {
   const [gameState, setGameState] = useState<GameState>(() =>
@@ -33,17 +32,79 @@ export default function GameScreen({
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const musicRef = useRef<SnakeMusic | null>(null)
+  const prevScoresRef = useRef<Record<string, number>>({})
+  const prevAliveRef = useRef<Record<string, boolean>>({})
+  const prevFreezeRef = useRef<number>(0)
+  const gameOverSoundPlayed = useRef(false)
+  const mountedRef = useRef(true)
 
-  // Host: listen for direction changes from other players
+  // Start music when game mounts, stop on unmount
+  useEffect(() => {
+    mountedRef.current = true
+    const music = new SnakeMusic()
+    music.start()
+    musicRef.current = music
+
+    const scores: Record<string, number> = {}
+    const alive: Record<string, boolean> = {}
+    for (const s of gameState.snakes) {
+      scores[s.id] = s.score
+      alive[s.id] = s.alive
+    }
+    prevScoresRef.current = scores
+    prevAliveRef.current = alive
+    prevFreezeRef.current = 0
+    gameOverSoundPlayed.current = false
+
+    return () => {
+      mountedRef.current = false
+      music.stop()
+      musicRef.current = null
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Detect score changes, deaths, freeze pickups for SFX
+  useEffect(() => {
+    const music = musicRef.current
+    if (!music) return
+
+    if (gameState.gameOver && !gameOverSoundPlayed.current) {
+      gameOverSoundPlayed.current = true
+      music.playGameOver()
+      return
+    }
+
+    for (const s of gameState.snakes) {
+      if (s.score > (prevScoresRef.current[s.id] ?? 0)) music.playEat()
+      if (!s.alive && (prevAliveRef.current[s.id] ?? true)) music.playDeath()
+    }
+
+    const totalFreezeNow = gameState.snakes.reduce((n, s) => n + (s.frozenTicks > 0 ? 1 : 0), 0)
+    if (totalFreezeNow > prevFreezeRef.current) music.playFreeze()
+    prevFreezeRef.current = totalFreezeNow
+
+    const scores: Record<string, number> = {}
+    const alive: Record<string, boolean> = {}
+    for (const s of gameState.snakes) {
+      scores[s.id] = s.score
+      alive[s.id] = s.alive
+    }
+    prevScoresRef.current = scores
+    prevAliveRef.current = alive
+  }, [gameState])
+
+  // Channel listeners — use mountedRef to ignore events after unmount
   useEffect(() => {
     if (!isHost) {
-      // Non-host: listen for state updates
       channel.on('broadcast', { event: 'game-state' }, ({ payload }) => {
+        if (!mountedRef.current) return
         setGameState(payload as GameState)
       })
     } else {
-      // Host: listen for direction changes
       channel.on('broadcast', { event: 'direction' }, ({ payload }) => {
+        if (!mountedRef.current) return
         const { playerId, direction } = payload as {
           playerId: string
           direction: Direction
@@ -52,16 +113,12 @@ export default function GameScreen({
       })
     }
 
-    return () => {
-      // Channel listeners are cleaned up when channel is removed
-    }
   }, [channel, isHost])
 
   // Host: run game loop
   useEffect(() => {
     if (!isHost) return
 
-    // Start game after a short delay
     const startTimeout = setTimeout(() => {
       setGameState((prev) => {
         const next = { ...prev, started: true }
@@ -69,7 +126,6 @@ export default function GameScreen({
         return next
       })
 
-      // Game tick
       timerRef.current = setInterval(() => {
         const state = gameRef.current
         if (state.gameOver) {
@@ -78,7 +134,6 @@ export default function GameScreen({
           return
         }
 
-        // Compute bot directions
         const botPlayers = players.filter((p) => p.isBot)
         for (const bot of botPlayers) {
           const dir = computeBotDirection(state, bot.id)
@@ -89,7 +144,6 @@ export default function GameScreen({
         gameRef.current = newState
         setGameState(newState)
 
-        // Broadcast to other players
         channel.send({
           type: 'broadcast',
           event: 'game-state',
@@ -97,7 +151,6 @@ export default function GameScreen({
         })
       }, TICK_RATE)
 
-      // Countdown timer
       countdownRef.current = setInterval(() => {
         const state = gameRef.current
         if (state.gameOver || state.timeLeft <= 0) {
@@ -119,7 +172,7 @@ export default function GameScreen({
         gameRef.current = updated
         setGameState(updated)
       }, 1000)
-    }, 1500) // 1.5s countdown before start
+    }, 1500)
 
     return () => {
       clearTimeout(startTimeout)
@@ -128,25 +181,6 @@ export default function GameScreen({
     }
   }, [isHost, channel])
 
-  // Listen for back-to-room event from host
-  useEffect(() => {
-    channel.on('broadcast', { event: 'back-to-room' }, () => {
-      onBackToRoom()
-    })
-  }, [channel, onBackToRoom])
-
-  const handleBackToRoom = useCallback(() => {
-    if (isHost) {
-      channel.send({
-        type: 'broadcast',
-        event: 'back-to-room',
-        payload: {},
-      })
-    }
-    onBackToRoom()
-  }, [isHost, channel, onBackToRoom])
-
-  // Send direction to host (or apply locally if host)
   const handleDirection = useCallback(
     (dir: Direction) => {
       if (isHost) {
@@ -224,7 +258,6 @@ export default function GameScreen({
           gameState={gameState}
           myId={myId}
           isHost={isHost}
-          onBackToRoom={handleBackToRoom}
           onLeave={onLeave}
         />
       )}
