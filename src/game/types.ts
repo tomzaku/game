@@ -39,10 +39,10 @@ export const DEFAULT_CONFIG: GameConfig = {
   wallPass: false,
 }
 
-export const FREEZE_DURATION_TICKS = 33 // 5 seconds at 150ms tick rate
-export const FREEZE_SPAWN_INTERVAL = 133 // 20 seconds at 150ms tick rate
-export const REVERSE_SPAWN_INTERVAL = 200 // 30 seconds at 150ms tick rate
-export const REVERSE_DURATION_TICKS = 33 // 5 seconds at 150ms tick rate
+export const FREEZE_DURATION_TICKS = 50 // 5 seconds at 100ms tick rate
+export const FREEZE_SPAWN_INTERVAL = 200 // 20 seconds at 100ms tick rate
+export const REVERSE_SPAWN_INTERVAL = 300 // 30 seconds at 100ms tick rate
+export const REVERSE_DURATION_TICKS = 50 // 5 seconds at 100ms tick rate
 
 export interface Player {
   id: string
@@ -52,7 +52,7 @@ export interface Player {
 }
 
 export const GRID_SIZE = 30
-export const TICK_RATE = 150 // ms between game ticks
+export const TICK_RATE = 100 // ms between game ticks
 export const GAME_DURATION = 60 // seconds
 export const MAX_PLAYERS = 4
 
