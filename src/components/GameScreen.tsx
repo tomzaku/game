@@ -238,19 +238,8 @@ export default function GameScreen({
         Arrow keys or WASD to move
       </div>
 
-      <div className="dpad mobile-only">
-        <button className="dpad-btn dpad-up" onTouchStart={(e) => { e.preventDefault(); handleDirection('UP') }}>
-          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4l-8 8h16z" fill="currentColor"/></svg>
-        </button>
-        <button className="dpad-btn dpad-left" onTouchStart={(e) => { e.preventDefault(); handleDirection('LEFT') }}>
-          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 12l8-8v16z" fill="currentColor"/></svg>
-        </button>
-        <button className="dpad-btn dpad-right" onTouchStart={(e) => { e.preventDefault(); handleDirection('RIGHT') }}>
-          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M20 12l-8-8v16z" fill="currentColor"/></svg>
-        </button>
-        <button className="dpad-btn dpad-down" onTouchStart={(e) => { e.preventDefault(); handleDirection('DOWN') }}>
-          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 20l8-8H4z" fill="currentColor"/></svg>
-        </button>
+      <div className="controls-hint mobile-only">
+        Swipe to move
       </div>
 
       {gameState.gameOver && (

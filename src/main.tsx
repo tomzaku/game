@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import GameSelect from './pages/GameSelect.tsx'
-import AuditionGame from './pages/AuditionGame.tsx'
+import AuditionApp from './pages/AuditionApp.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<GameSelect />} />
         <Route path="/snake" element={<App />} />
-        <Route path="/audition" element={<AuditionGame />} />
+        <Route path="/audition" element={<AuditionApp />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

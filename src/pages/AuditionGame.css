@@ -142,6 +142,30 @@
   justify-content: center;
 }
 
+/* Standalone name input for lobby */
+.audition-name-input {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 2px solid var(--aud-border);
+  background: var(--aud-surface);
+  color: var(--aud-text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.audition-name-input:focus {
+  border-color: var(--aud-neon-cyan);
+}
+
+.audition-name-input::placeholder {
+  color: var(--aud-text-dim);
+}
+
 .audition-name-field {
   display: flex;
   flex-direction: column;

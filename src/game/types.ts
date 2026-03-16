@@ -57,6 +57,7 @@ export const GAME_DURATION = 60 // seconds
 export const MAX_PLAYERS = 4
 
 export const PLAYER_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7']
+export const PLAYER_COLORS_RGB = ['34,197,94', '59,130,246', '249,115,22', '168,85,247']
 export const PLAYER_COLOR_NAMES = ['Green', 'Blue', 'Orange', 'Purple']
 
 export const SPAWN_POSITIONS: Position[] = [

@@ -55,14 +55,18 @@ export default function GameCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  // Touch controls
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0]
-    touchStart.current = { x: touch.clientX, y: touch.clientY }
-  }, [])
+  // Swipe controls on entire screen
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0]
+      touchStart.current = { x: touch.clientX, y: touch.clientY }
+    }
 
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchStart.current) e.preventDefault()
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
       if (!touchStart.current) return
       const touch = e.changedTouches[0]
       const dx = touch.clientX - touchStart.current.x
@@ -78,9 +82,17 @@ export default function GameCanvas({
         onDirection(dy > 0 ? 'DOWN' : 'UP')
       }
       touchStart.current = null
-    },
-    [onDirection]
-  )
+    }
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [onDirection])
 
   // Render
   useEffect(() => {
@@ -315,8 +327,6 @@ export default function GameCanvas({
     <canvas
       ref={canvasRef}
       className="game-canvas"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     />
   )
 }
