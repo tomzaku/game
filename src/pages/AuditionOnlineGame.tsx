@@ -48,7 +48,6 @@ const DIFFICULTY_CONFIG: Record<Difficulty, {
   hard:   { bpm: 160, startArrows: 5, maxArrows: 10, rounds: 12, timingSpeed: 1.8 },
 }
 
-const GRADE_SCORES: Record<HitGrade, number> = { perfect: 300, great: 200, good: 100, miss: 0 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 function generateSequence(length: number): Direction[] {
@@ -207,7 +206,7 @@ export default function AuditionOnlineGame({ channel, players, myId, isHost, con
 
   // My local input state
   const [myInput, setMyInput] = useState<Direction[]>([])
-  const [myTimingGrade, setMyTimingGrade] = useState<HitGrade | null>(null)
+  const [, setMyTimingGrade] = useState<HitGrade | null>(null)
   const [myTimingPressed, setMyTimingPressed] = useState(false)
   const myTimingPressedRef = useRef(false)
 
@@ -527,10 +526,6 @@ export default function AuditionOnlineGame({ channel, players, myId, isHost, con
 
   // ─── Rematch ───────────────────────────────────────────────────
   const handleRematch = () => window.location.reload()
-
-  // ─── Find my player index ─────────────────────────────────────
-  const myIdx = players.findIndex((p) => p.id === myId)
-  const myState = playerStates.find((p) => p.id === myId)
 
   // ─── GAME OVER ─────────────────────────────────────────────────
   if (gameOver) {

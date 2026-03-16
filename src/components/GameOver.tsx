@@ -8,7 +8,7 @@ interface GameOverProps {
   onLeave: () => void
 }
 
-export default function GameOver({ gameState, myId, isHost, onLeave }: GameOverProps) {
+export default function GameOver({ gameState, myId, onLeave }: GameOverProps) {
   const winner = getWinner(gameState)
   const isWinner = winner?.id === myId
   const sorted = [...gameState.snakes].sort((a, b) => b.score - a.score)
