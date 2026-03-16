@@ -238,9 +238,6 @@ export default function GameScreen({
         Arrow keys or WASD to move
       </div>
 
-      <div className="controls-hint mobile-only">
-        Swipe to move
-      </div>
 
       {gameState.gameOver && (
         <GameOver

@@ -296,52 +296,21 @@
 
 @media (pointer: coarse) {
   .mobile-only {
-    display: grid;
+    display: block;
   }
   .desktop-only {
     display: none;
   }
 }
 
-/* D-pad */
-.dpad {
-  display: grid;
-  grid-template-areas:
-    ".    up   ."
-    "left .    right"
-    ".    down .";
-  grid-template-columns: 60px 60px 60px;
-  grid-template-rows: 60px 60px 60px;
-  gap: 4px;
-  margin-top: 8px;
-  user-select: none;
-  -webkit-user-select: none;
+/* Joystick */
+.joystick-zone {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 16px auto 0;
+  touch-action: none;
 }
-
-.dpad-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #1f2028;
-  border: 2px solid #2e303a;
-  border-radius: 12px;
-  color: #9ca3af;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.1s, border-color 0.1s;
-}
-
-.dpad-btn:active {
-  background: #2e303a;
-  border-color: #22c55e;
-  color: #22c55e;
-}
-
-.dpad-up    { grid-area: up; }
-.dpad-down  { grid-area: down; }
-.dpad-left  { grid-area: left; }
-.dpad-right { grid-area: right; }
 
 /* ---- Game Over ---- */
 .game-over-overlay {

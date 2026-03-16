@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
+import nipplejs from 'nipplejs'
 import type { GameState } from '../game/types'
 
 interface GameCanvasProps {
@@ -16,7 +17,7 @@ export default function GameCanvas({
   onDirection,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const joystickRef = useRef<HTMLDivElement>(null)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -55,43 +56,36 @@ export default function GameCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  // Swipe controls on entire screen
+  // Nipplejs joystick for mobile
   useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0]
-      touchStart.current = { x: touch.clientX, y: touch.clientY }
-    }
+    const zone = joystickRef.current
+    if (!zone) return
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (touchStart.current) e.preventDefault()
-    }
+    const manager = nipplejs.create({
+      zone,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      color: '#22c55e',
+      size: 120,
+      restOpacity: 0.75,
+    })
 
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!touchStart.current) return
-      const touch = e.changedTouches[0]
-      const dx = touch.clientX - touchStart.current.x
-      const dy = touch.clientY - touchStart.current.y
-      const absDx = Math.abs(dx)
-      const absDy = Math.abs(dy)
-
-      if (Math.max(absDx, absDy) < 20) return // too small
-
-      if (absDx > absDy) {
-        onDirection(dx > 0 ? 'RIGHT' : 'LEFT')
-      } else {
-        onDirection(dy > 0 ? 'DOWN' : 'UP')
+    let lastDir: string | null = null
+    manager.on('dir', (_evt, data) => {
+      const dir = data.direction?.angle
+      if (!dir || dir === lastDir) return
+      lastDir = dir
+      switch (dir) {
+        case 'up': onDirection('UP'); break
+        case 'down': onDirection('DOWN'); break
+        case 'left': onDirection('LEFT'); break
+        case 'right': onDirection('RIGHT'); break
       }
-      touchStart.current = null
-    }
+    })
 
-    window.addEventListener('touchstart', handleTouchStart, { passive: true })
-    window.addEventListener('touchmove', handleTouchMove, { passive: false })
-    window.addEventListener('touchend', handleTouchEnd, { passive: true })
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart)
-      window.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('touchend', handleTouchEnd)
-    }
+    manager.on('end', () => { lastDir = null })
+
+    return () => { manager.destroy() }
   }, [onDirection])
 
   // Render
@@ -324,9 +318,12 @@ export default function GameCanvas({
   }, [gameState, myId])
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="game-canvas"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="game-canvas"
+      />
+      <div ref={joystickRef} className="joystick-zone mobile-only" />
+    </>
   )
 }
