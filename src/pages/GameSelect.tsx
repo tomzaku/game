@@ -18,6 +18,14 @@ const games = [
     color: '#00f0ff',
     path: '/audition',
   },
+  {
+    id: 'typeracer',
+    title: 'TypeRacer',
+    description: 'Race against AI bots by typing! Neon arcade vibes, live WPM stats, and particle effects.',
+    emoji: '\u{1F3CE}\u{FE0F}',
+    color: '#bf5af2',
+    path: '/typeracer',
+  },
 ]
 
 export default function GameSelect() {
