@@ -52,7 +52,7 @@ export interface Player {
 }
 
 export const GRID_SIZE = 30
-export const TICK_RATE = 100 // ms between game ticks
+export const TICK_RATE = 160 // ms between game ticks
 export const GAME_DURATION = 60 // seconds
 export const MAX_PLAYERS = 4
 

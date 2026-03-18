@@ -201,19 +201,11 @@ export default function Lobby({ onGameStart, initialRoomCode }: LobbyProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Auto-rejoin room on page refresh
+  // If opened with ?room=CODE, pre-fill and go to join screen (but don't auto-join)
   useEffect(() => {
-    const code = initialRoomCode || localStorage.getItem('snake-room-code')
-    const name = localStorage.getItem('snake-player-name')
-    if (code && name && !channel) {
-      const wasHost = localStorage.getItem('snake-is-host') === '1'
-      const timer = setTimeout(() => {
-        if (joinRoomRef.current) {
-          setScreen('create')
-          joinRoomRef.current(code, wasHost)
-        }
-      }, 100)
-      return () => clearTimeout(timer)
+    if (initialRoomCode && !channel) {
+      setRoomCode(initialRoomCode)
+      setScreen('join')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

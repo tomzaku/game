@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import nipplejs from 'nipplejs'
 import type { GameState } from '../game/types'
 
@@ -8,7 +8,6 @@ interface GameCanvasProps {
   onDirection: (dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => void
 }
 
-const CELL_SIZE = 18
 const GAP = 1
 
 export default function GameCanvas({
@@ -18,6 +17,8 @@ export default function GameCanvas({
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const joystickRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [cellSize, setCellSize] = useState(18)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -55,6 +56,23 @@ export default function GameCanvas({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // Dynamic cell size based on available space
+  useEffect(() => {
+    const update = () => {
+      const container = containerRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      // Use the smaller dimension, leave some padding for HUD
+      const available = Math.min(rect.width, rect.height)
+      const grid = gameState.gridSize
+      const newCellSize = Math.floor((available - (grid + 1) * GAP) / grid)
+      setCellSize(Math.max(8, Math.min(newCellSize, 40)))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [gameState.gridSize])
 
   // Nipplejs joystick for mobile
   useEffect(() => {
@@ -95,7 +113,7 @@ export default function GameCanvas({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const size = gameState.gridSize * (CELL_SIZE + GAP) + GAP
+    const size = gameState.gridSize * (cellSize + GAP) + GAP
     canvas.width = size
     canvas.height = size
 
@@ -108,24 +126,24 @@ export default function GameCanvas({
     for (let x = 0; x < gameState.gridSize; x++) {
       for (let y = 0; y < gameState.gridSize; y++) {
         ctx.fillRect(
-          x * (CELL_SIZE + GAP) + GAP,
-          y * (CELL_SIZE + GAP) + GAP,
-          CELL_SIZE,
-          CELL_SIZE
+          x * (cellSize + GAP) + GAP,
+          y * (cellSize + GAP) + GAP,
+          cellSize,
+          cellSize
         )
       }
     }
 
     // Fruits
     for (const fruit of gameState.fruits) {
-      const fx = fruit.x * (CELL_SIZE + GAP) + GAP
-      const fy = fruit.y * (CELL_SIZE + GAP) + GAP
+      const fx = fruit.x * (cellSize + GAP) + GAP
+      const fy = fruit.y * (cellSize + GAP) + GAP
       ctx.fillStyle = '#ef4444'
       ctx.beginPath()
       ctx.arc(
-        fx + CELL_SIZE / 2,
-        fy + CELL_SIZE / 2,
-        CELL_SIZE / 2 - 1,
+        fx + cellSize / 2,
+        fy + cellSize / 2,
+        cellSize / 2 - 1,
         0,
         Math.PI * 2
       )
@@ -134,8 +152,8 @@ export default function GameCanvas({
       ctx.fillStyle = 'rgba(255,255,255,0.3)'
       ctx.beginPath()
       ctx.arc(
-        fx + CELL_SIZE / 2 - 2,
-        fy + CELL_SIZE / 2 - 2,
+        fx + cellSize / 2 - 2,
+        fy + cellSize / 2 - 2,
         3,
         0,
         Math.PI * 2
@@ -145,27 +163,27 @@ export default function GameCanvas({
 
     // Freeze items
     for (const fi of gameState.freezeItems) {
-      const fx = fi.x * (CELL_SIZE + GAP) + GAP
-      const fy = fi.y * (CELL_SIZE + GAP) + GAP
-      const cx = fx + CELL_SIZE / 2
-      const cy = fy + CELL_SIZE / 2
+      const fx = fi.x * (cellSize + GAP) + GAP
+      const fy = fi.y * (cellSize + GAP) + GAP
+      const cx = fx + cellSize / 2
+      const cy = fy + cellSize / 2
 
       // Icy blue glow
       ctx.fillStyle = 'rgba(56, 189, 248, 0.2)'
       ctx.beginPath()
-      ctx.arc(cx, cy, CELL_SIZE / 2 + 2, 0, Math.PI * 2)
+      ctx.arc(cx, cy, cellSize / 2 + 2, 0, Math.PI * 2)
       ctx.fill()
 
       // Main crystal
       ctx.fillStyle = '#38bdf8'
       ctx.beginPath()
-      ctx.arc(cx, cy, CELL_SIZE / 2 - 1, 0, Math.PI * 2)
+      ctx.arc(cx, cy, cellSize / 2 - 1, 0, Math.PI * 2)
       ctx.fill()
 
       // Snowflake cross pattern
       ctx.strokeStyle = '#fff'
       ctx.lineWidth = 1.5
-      const r = CELL_SIZE / 2 - 3
+      const r = cellSize / 2 - 3
       for (let a = 0; a < 3; a++) {
         const angle = (a * Math.PI) / 3
         ctx.beginPath()
@@ -183,21 +201,21 @@ export default function GameCanvas({
 
     // Reverse items
     for (const ri of gameState.reverseItems) {
-      const rx = ri.x * (CELL_SIZE + GAP) + GAP
-      const ry = ri.y * (CELL_SIZE + GAP) + GAP
-      const cx = rx + CELL_SIZE / 2
-      const cy = ry + CELL_SIZE / 2
+      const rx = ri.x * (cellSize + GAP) + GAP
+      const ry = ri.y * (cellSize + GAP) + GAP
+      const cx = rx + cellSize / 2
+      const cy = ry + cellSize / 2
 
       // Yellow glow
       ctx.fillStyle = 'rgba(250, 204, 21, 0.2)'
       ctx.beginPath()
-      ctx.arc(cx, cy, CELL_SIZE / 2 + 2, 0, Math.PI * 2)
+      ctx.arc(cx, cy, cellSize / 2 + 2, 0, Math.PI * 2)
       ctx.fill()
 
       // Main circle
       ctx.fillStyle = '#facc15'
       ctx.beginPath()
-      ctx.arc(cx, cy, CELL_SIZE / 2 - 1, 0, Math.PI * 2)
+      ctx.arc(cx, cy, cellSize / 2 - 1, 0, Math.PI * 2)
       ctx.fill()
 
       // Reverse arrows (U-turn symbol)
@@ -233,14 +251,14 @@ export default function GameCanvas({
 
       for (let i = 0; i < snake.body.length; i++) {
         const seg = snake.body[i]
-        const sx = seg.x * (CELL_SIZE + GAP) + GAP
-        const sy = seg.y * (CELL_SIZE + GAP) + GAP
+        const sx = seg.x * (cellSize + GAP) + GAP
+        const sy = seg.y * (cellSize + GAP) + GAP
 
         ctx.globalAlpha = alpha
         ctx.fillStyle = isFrozen ? '#7dd3fc' : snake.color
         const radius = 4
         ctx.beginPath()
-        ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
+        ctx.roundRect(sx, sy, cellSize, cellSize, radius)
         ctx.fill()
 
         // Frozen ice overlay
@@ -248,7 +266,7 @@ export default function GameCanvas({
           ctx.globalAlpha = 0.35
           ctx.fillStyle = '#38bdf8'
           ctx.beginPath()
-          ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
+          ctx.roundRect(sx, sy, cellSize, cellSize, radius)
           ctx.fill()
           ctx.globalAlpha = alpha
         }
@@ -258,7 +276,7 @@ export default function GameCanvas({
           ctx.globalAlpha = 0.3
           ctx.fillStyle = '#facc15'
           ctx.beginPath()
-          ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
+          ctx.roundRect(sx, sy, cellSize, cellSize, radius)
           ctx.fill()
           ctx.globalAlpha = alpha
         }
@@ -274,26 +292,26 @@ export default function GameCanvas({
             case 'UP':
               e1x = sx + 4
               e1y = sy + 4
-              e2x = sx + CELL_SIZE - 4 - eyeSize
+              e2x = sx + cellSize - 4 - eyeSize
               e2y = sy + 4
               break
             case 'DOWN':
               e1x = sx + 4
-              e1y = sy + CELL_SIZE - 4 - eyeSize
-              e2x = sx + CELL_SIZE - 4 - eyeSize
-              e2y = sy + CELL_SIZE - 4 - eyeSize
+              e1y = sy + cellSize - 4 - eyeSize
+              e2x = sx + cellSize - 4 - eyeSize
+              e2y = sy + cellSize - 4 - eyeSize
               break
             case 'LEFT':
               e1x = sx + 4
               e1y = sy + 4
               e2x = sx + 4
-              e2y = sy + CELL_SIZE - 4 - eyeSize
+              e2y = sy + cellSize - 4 - eyeSize
               break
             case 'RIGHT':
-              e1x = sx + CELL_SIZE - 4 - eyeSize
+              e1x = sx + cellSize - 4 - eyeSize
               e1y = sy + 4
-              e2x = sx + CELL_SIZE - 4 - eyeSize
-              e2y = sy + CELL_SIZE - 4 - eyeSize
+              e2x = sx + cellSize - 4 - eyeSize
+              e2y = sy + cellSize - 4 - eyeSize
               break
           }
           ctx.beginPath()
@@ -308,22 +326,22 @@ export default function GameCanvas({
             ctx.strokeStyle = '#fff'
             ctx.lineWidth = 2
             ctx.beginPath()
-            ctx.roundRect(sx, sy, CELL_SIZE, CELL_SIZE, radius)
+            ctx.roundRect(sx, sy, cellSize, cellSize, radius)
             ctx.stroke()
           }
         }
       }
       ctx.globalAlpha = 1
     }
-  }, [gameState, myId])
+  }, [gameState, myId, cellSize])
 
   return (
-    <>
+    <div ref={containerRef} className="game-canvas-container">
       <canvas
         ref={canvasRef}
         className="game-canvas"
       />
       <div ref={joystickRef} className="joystick-zone mobile-only" />
-    </>
+    </div>
   )
 }
